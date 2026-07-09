@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Resolve through symlinks so ~/.local/bin/grokprint still finds the repo.
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+ROOT="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
+export PYTHONPATH="${ROOT}/src${PYTHONPATH:+:$PYTHONPATH}"
+export GROKPRINT_ROOT="${GROKPRINT_ROOT:-$ROOT}"
+exec python3 -m grokprint.cli "$@"

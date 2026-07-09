@@ -1,0 +1,11 @@
+{"ts": "2026-07-09T10:00:00.000Z", "type": "turn_started", "session_id": "fixture-session-001", "turn_number": 0, "model_id": "grok-build", "yolo_mode": true, "conversation_message_count": 2, "session_relationship": "primary", "schema_version": "1.0"}
+{"ts": "2026-07-09T10:00:01.000Z", "type": "loop_started", "loop_index": 0}
+{"ts": "2026-07-09T10:00:01.100Z", "type": "tool_started", "tool_name": "read_file"}
+{"ts": "2026-07-09T10:00:01.200Z", "type": "permission_requested", "tool_name": "read_file"}
+{"ts": "2026-07-09T10:00:01.250Z", "type": "permission_resolved", "tool_name": "read_file", "decision": "allow", "wait_ms": 0}
+{"ts": "2026-07-09T10:00:01.300Z", "type": "tool_completed", "tool_name": "read_file", "duration_ms": 12, "outcome": "success"}
+{"ts": "2026-07-09T10:00:02.000Z", "type": "tool_started", "tool_name": "run_terminal_command"}
+{"ts": "2026-07-09T10:00:02.100Z", "type": "tool_completed", "tool_name": "run_terminal_command", "duration_ms": 40, "outcome": "error"}
+{"ts": "2026-07-09T10:00:03.000Z", "type": "tool_started", "tool_name": "search_replace"}
+{"ts": "2026-07-09T10:00:03.100Z", "type": "tool_completed", "tool_name": "search_replace", "duration_ms": 5, "outcome": "success"}
+{"ts": "2026-07-09T10:00:04.000Z", "type": "turn_ended", "outcome": "completed"}

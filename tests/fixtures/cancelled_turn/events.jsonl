@@ -1,0 +1,4 @@
+{"ts": "2026-07-09T12:00:00.000Z", "type": "turn_started", "session_id": "fixture-cancel-001", "turn_number": 2, "model_id": "grok-build", "session_relationship": "primary", "schema_version": "1.0"}
+{"ts": "2026-07-09T12:00:01.000Z", "type": "tool_started", "tool_name": "read_file"}
+{"ts": "2026-07-09T12:00:01.100Z", "type": "tool_completed", "tool_name": "read_file", "duration_ms": 2, "outcome": "success"}
+{"ts": "2026-07-09T12:00:02.000Z", "type": "turn_ended", "outcome": "cancelled"}

@@ -1,0 +1,2 @@
+{"type": "user", "content": "Fix the failing tests"}
+{"type": "assistant", "content": "I updated the handler and re-ran tests; one suite still fails.\n\nShould I push this branch for review, or keep iterating locally first?"}

@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Rennlabs/grokprint/schema/grokprint.schema.json",
+  "title": "GrokprintCard",
+  "description": "Turn-level orientation card for Grok Build. Single writer-of-record on disk.",
+  "type": "object",
+  "required": [
+    "version",
+    "session_id",
+    "status",
+    "ts",
+    "happened",
+    "attention",
+    "need_from_you",
+    "sources",
+    "redacted"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "turn_number": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "cancelled", "error", "missing", "in_progress"]
+    },
+    "ts": {
+      "type": "string",
+      "description": "ISO-8601 UTC timestamp when the card was written"
+    },
+    "happened": {
+      "type": "array",
+      "items": { "type": "string", "maxLength": 200 },
+      "maxItems": 12,
+      "description": "Deterministic floor: tools, outcomes, file-ish facts"
+    },
+    "attention": {
+      "type": "array",
+      "items": { "type": "string", "maxLength": 200 },
+      "maxItems": 8,
+      "description": "Failures, denials, surprises, risks"
+    },
+    "need_from_you": {
+      "type": "array",
+      "items": { "type": "string", "maxLength": 240 },
+      "maxItems": 6,
+      "description": "Questions / decisions the user must answer"
+    },
+    "next": {
+      "type": ["string", "null"],
+      "maxLength": 200,
+      "description": "Optional one-line suggested next step"
+    },
+    "sources": {
+      "type": "object",
+      "required": ["events", "model"],
+      "additionalProperties": false,
+      "properties": {
+        "events": { "type": "boolean" },
+        "chat_history": { "type": "boolean" },
+        "updates": { "type": "boolean" },
+        "model": { "type": "boolean" }
+      }
+    },
+    "redacted": {
+      "type": "boolean",
+      "description": "True if redaction pass ran before write"
+    },
+    "stale": {
+      "type": "boolean",
+      "description": "True when card is missing/failed and placeholder was written"
+    },
+    "parent_only": {
+      "type": "boolean",
+      "description": "True when subagent digests are suppressed (default policy)"
+    },
+    "model_id": {
+      "type": ["string", "null"]
+    },
+    "extract_ms": {
+      "type": ["number", "null"],
+      "minimum": 0
+    },
+    "session_dir": {
+      "type": ["string", "null"]
+    }
+  }
+}

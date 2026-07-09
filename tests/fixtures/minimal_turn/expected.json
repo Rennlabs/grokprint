@@ -1,0 +1,10 @@
+{
+  "status": "completed",
+  "turn_number": 0,
+  "must_contain_happened_substrings": ["read_file", "run_terminal_command", "search_replace"],
+  "must_contain_attention_substrings": ["error"],
+  "must_contain_need_substrings": ["push"],
+  "sources_events": true,
+  "sources_chat_history": true,
+  "redacted": true
+}

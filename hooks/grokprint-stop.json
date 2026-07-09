@@ -1,0 +1,32 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${GROKPRINT_ROOT}/hooks/stop_print.py\"",
+            "timeout": 5,
+            "env": {
+              "GROKPRINT_ROOT": "${GROKPRINT_ROOT}"
+            }
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${GROKPRINT_ROOT}/hooks/stop_print.py\"",
+            "timeout": 5,
+            "env": {
+              "GROKPRINT_ROOT": "${GROKPRINT_ROOT}"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

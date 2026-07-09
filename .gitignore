@@ -1,9 +1,13 @@
 .omc/
 .patchright/
+.grokprint/
 *.pyc
 __pycache__/
+*.egg-info/
 .env
 .DS_Store
 node_modules/
 dist/
 .venv/
+.pytest_cache/
+*.json.lock
