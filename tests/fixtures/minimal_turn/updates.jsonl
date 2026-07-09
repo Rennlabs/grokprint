@@ -1,0 +1,3 @@
+{"timestamp": 1, "method": "_x.ai/session/update", "params": {"sessionId": "fixture-session-001", "update": {"sessionUpdate": "tool_call", "toolCallId": "c1", "title": "read_file"}}}
+{"timestamp": 2, "method": "_x.ai/session/update", "params": {"sessionId": "fixture-session-001", "update": {"sessionUpdate": "tool_call", "toolCallId": "c2", "title": "Web search: grokprint"}}}
+{"timestamp": 3, "method": "_x.ai/session/update", "params": {"sessionId": "fixture-session-001", "update": {"sessionUpdate": "tool_call", "toolCallId": "c3", "title": "run_terminal_command"}}}

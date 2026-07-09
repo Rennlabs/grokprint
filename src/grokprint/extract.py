@@ -24,11 +24,29 @@ SCHEMA_VERSION = 1
 # Parent-only policy: skip writing digests for known subagent relationships.
 SUBAGENT_RELATIONSHIPS = frozenset({"subagent", "child", "fork_child"})
 
-NEED_PATTERNS = [
-    re.compile(r"\?\s*$"),
-    re.compile(r"(?i)\b(do you want|should i|shall i|please confirm|confirm that|which (option|one)|pick one|approve|go ahead|reply with|let me know|your call|need you to|what would you like)\b"),
+# Strong decision / action asks (always NEED).
+NEED_STRONG = [
+    re.compile(
+        r"(?i)\b("
+        r"do you want|should i|shall i|please confirm|confirm that|"
+        r"which (option|one)|pick one|approve|go ahead|reply with|"
+        r"let me know|your call|need you to|what would you like|"
+        r"want me to|can i (go|proceed|push|merge|deploy)|"
+        r"ready for (you|me) to|is it ok (if|to)|are you (ok|fine) with"
+        r")\b"
+    ),
     re.compile(r"(?i)\b(choose|select)\b.{0,40}\b(option|approach|path)\b"),
+    re.compile(r"(?i)\b(postgres|sqlite|mysql|option\s*[abc123])\b.*\?"),
 ]
+
+# Weak: line ends with ? but may be rhetorical / explanatory.
+NEED_WEAK_Q = re.compile(r"\?\s*$")
+
+# Explanatory / rhetorical openers — not user obligations unless strong pattern also hits.
+NEED_RHETORICAL = re.compile(
+    r"(?i)^(what is|what are|what does|what do|how does|how do|how is|why does|why do|why is|"
+    r"when does|where does|who is|note that|for example|e\.g\.|i\.e\.)\b"
+)
 
 
 def _utc_now() -> str:
@@ -176,36 +194,141 @@ def _tail_assistant_text(chat_path: Path, max_chars: int = 4000) -> str:
     return last_assistant[-max_chars:]
 
 
+def _strip_fenced_code(text: str) -> str:
+    """Remove ``` fenced blocks so code comments don't become NEED."""
+    return re.sub(r"```[\s\S]*?```", "\n", text)
+
+
+def _is_need_line(line: str) -> bool:
+    if any(p.search(line) for p in NEED_STRONG):
+        return True
+    if not NEED_WEAK_Q.search(line):
+        return False
+    if len(line) > 200:
+        return False
+    if NEED_RHETORICAL.search(line):
+        return False
+    # Weak ? only counts in the decision-ish zone: second person / confirm / or
+    if re.search(r"(?i)\b(you|your|we|shall|should|ok\b|okay|confirm|prefer|approve)\b", line):
+        return True
+    return False
+
+
 def _extract_need(text: str, limit: int = 6) -> list[str]:
     if not text:
         return []
+    text = _strip_fenced_code(text)
     needs: list[str] = []
     seen: set[str] = set()
-    # Prefer line-level questions
-    for raw in text.splitlines():
-        line = raw.strip().lstrip("#*- ").strip()
+    lines = text.splitlines()
+    # Prefer the closing stretch of the message (where real asks live).
+    start = max(0, int(len(lines) * 0.4)) if len(lines) > 12 else 0
+    ordered = list(enumerate(lines))
+    # Scan end-first for ranking, but keep first-seen order of strong hits in end zone.
+    candidates: list[tuple[int, str, bool]] = []
+    for idx, raw in ordered[start:]:
+        line = raw.strip().lstrip("#*-• ").strip()
         if not line or len(line) < 8:
             continue
-        if any(p.search(line) for p in NEED_PATTERNS):
-            key = line.lower()
-            if key in seen:
-                continue
-            seen.add(key)
-            needs.append(line[:240])
-            if len(needs) >= limit:
-                return needs
-    # Fallback: last paragraph with a question mark
+        strong = any(p.search(line) for p in NEED_STRONG)
+        if strong or _is_need_line(line):
+            candidates.append((idx, line[:240], strong))
+    # Strong first, then later lines
+    candidates.sort(key=lambda t: (0 if t[2] else 1, -t[0]))
+    for _, line, _ in candidates:
+        key = line.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        needs.append(line)
+        if len(needs) >= limit:
+            break
+    # Fallback: only last 25% of text, strong-ish sentence with ?
     if not needs and "?" in text:
-        for para in reversed(re.split(r"\n\s*\n", text)):
+        tail = text[int(len(text) * 0.75) :]
+        for para in reversed(re.split(r"\n\s*\n", tail)):
             para = para.strip()
-            if "?" in para:
-                # Take first sentence with ?
-                for sent in re.split(r"(?<=[?])\s+", para):
-                    if "?" in sent:
-                        needs.append(sent.strip()[:240])
-                        break
+            if "?" not in para:
+                continue
+            for sent in re.split(r"(?<=[?])\s+", para):
+                s = sent.strip()
+                if "?" in s and _is_need_line(s):
+                    needs.append(s[:240])
+                    break
+            if needs:
                 break
     return needs[:limit]
+
+
+def _tail_bytes(path: Path, max_bytes: int = 400_000) -> str:
+    if not path.exists():
+        return ""
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as f:
+            if size > max_bytes:
+                f.seek(size - max_bytes)
+                f.readline()  # drop partial first line
+            return f.read().decode("utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def _updates_tool_titles(updates_path: Path, limit: int = 12) -> list[str]:
+    """Bounded tail of updates.jsonl → recent tool_call titles for richer HAPPENED."""
+    raw = _tail_bytes(updates_path)
+    if not raw:
+        return []
+    titles: list[str] = []
+    for line in raw.splitlines():
+        line = line.strip()
+        if not line or "tool_call" not in line:
+            continue
+        try:
+            o = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        u = (o.get("params") or {}).get("update") or o.get("update") or o
+        if u.get("sessionUpdate") != "tool_call":
+            continue
+        title = u.get("title") or ""
+        if not title:
+            # fall back to kind / tool name fields
+            title = str(u.get("toolName") or u.get("kind") or "")
+        title = str(title).strip()
+        if title:
+            titles.append(title[:120])
+    # Keep the last N unique-ish titles from this tail (current turn-ish)
+    if not titles:
+        return []
+    recent = titles[-40:]
+    # Compact: count occurrences
+    counts: Counter[str] = Counter(recent)
+    items = counts.most_common(limit)
+    out = []
+    for name, n in items:
+        out.append(f"{name}×{n}" if n > 1 else name)
+    return out
+
+
+def _merge_happened(event_lines: list[str], update_titles: list[str]) -> list[str]:
+    """Prefer event tallies; append update titles when they add names events lack."""
+    if not update_titles:
+        return event_lines
+    if not event_lines or event_lines == ["no tools in last turn"]:
+        return [f"tools: {', '.join(update_titles[:8])}"]
+    joined = " ".join(event_lines).lower()
+    extras = []
+    for t in update_titles:
+        head = t.split("×")[0].split(":")[0].strip().lower()
+        token = head.split()[0] if head else ""
+        if token and token not in joined and head not in joined:
+            extras.append(t)
+    if not extras:
+        return event_lines
+    merged = list(event_lines)
+    merged.append("also: " + ", ".join(extras[:6]))
+    return merged[:12]
 
 
 def _extract_next(text: str) -> str | None:
@@ -265,6 +388,8 @@ def extract_card(
                 "redacted": True,
                 "stale": True,
                 "parent_only": parent_only,
+                "loop_active": False,
+                "loop_modes": [],
                 "model_id": None,
                 "extract_ms": round((time.perf_counter() - t0) * 1000, 2),
                 "session_dir": None,
@@ -330,8 +455,20 @@ def extract_card(
             need = _extract_need(text)
             next_line = _extract_next(text)
 
+    used_updates = False
+    update_titles = _updates_tool_titles(sdir / "updates.jsonl")
+    if update_titles:
+        used_updates = True
+        happened = _merge_happened(happened, update_titles)
+
     if not happened:
         happened = ["no tools in last turn"]
+
+    # Loop / harness label (read-only; never controls agents)
+    from .loop import detect_loop_modes
+
+    workspace = cwd or summary.get("info", {}).get("cwd") or os.environ.get("GROK_WORKSPACE_ROOT")
+    loop_modes = detect_loop_modes(cwd=workspace, session_id=sid)
 
     # Cap lists to schema limits
     happened = happened[:12]
@@ -351,12 +488,14 @@ def extract_card(
         "sources": {
             "events": bool(turn),
             "chat_history": used_chat,
-            "updates": False,
+            "updates": used_updates,
             "model": False,
         },
         "redacted": False,
         "stale": status == "missing",
         "parent_only": parent_only,
+        "loop_active": bool(loop_modes),
+        "loop_modes": loop_modes,
         "model_id": (started or {}).get("model_id") or summary.get("current_model_id"),
         "extract_ms": round((time.perf_counter() - t0) * 1000, 2),
         "session_dir": str(sdir),
@@ -415,5 +554,14 @@ def extract_and_write(
     **kwargs: Any,
 ) -> dict[str, Any]:
     card = extract_card(session_id=session_id, cwd=cwd, **kwargs)
+    sdir = Path(card["session_dir"]) if card.get("session_dir") else None
+    from .loop import should_write_this_stop
+
+    ok, reason = should_write_this_stop(sdir, list(card.get("loop_modes") or []))
+    if not ok:
+        card = dict(card)
+        card["throttled"] = True
+        card["throttle_reason"] = reason
+        return redact_card(card)
     write_card(card, cwd=cwd)
     return card

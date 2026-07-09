@@ -20,8 +20,15 @@ def render_markdown(card: Mapping[str, Any]) -> str:
     ms_s = f" · {ms}ms" if ms is not None else ""
     stale = " · STALE" if card.get("stale") else ""
 
+    loop = ""
+    if card.get("loop_active") and card.get("loop_modes"):
+        loop = " · loop:" + ",".join(card["loop_modes"])
+    elif card.get("loop_active"):
+        loop = " · loop"
+    thr = " · throttled" if card.get("throttled") else ""
+
     lines = [
-        f"# GROKPRINT · {status} · {turn_s} · {sid}…{ms_s}{stale}",
+        f"# GROKPRINT · {status} · {turn_s} · {sid}…{ms_s}{stale}{loop}{thr}",
         "",
         "## HAPPENED",
         _bullets(list(card.get("happened") or [])),
@@ -43,7 +50,10 @@ def render_compact(card: Mapping[str, Any], max_lines: int = 12) -> str:
     """≤12 line terminal-friendly card."""
     lines: list[str] = []
     status = card.get("status") or "?"
-    lines.append(f"GROKPRINT [{status}] t{card.get('turn_number', '?')}")
+    loop = ""
+    if card.get("loop_modes"):
+        loop = " loop:" + ",".join(card["loop_modes"][:3])
+    lines.append(f"GROKPRINT [{status}] t{card.get('turn_number', '?')}{loop}")
 
     def section(title: str, items: list[str], empty: str = "none") -> None:
         lines.append(f"{title}:")

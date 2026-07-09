@@ -91,10 +91,49 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         print(f"status:       {card.get('status')}")
         print(f"tools lines:  {len(card.get('happened') or [])}")
         print(f"need lines:   {len(card.get('need_from_you') or [])}")
+        print(f"loop_active:  {card.get('loop_active')} {card.get('loop_modes') or []}")
+        # Recent Stop co-fire names from updates.jsonl (tail)
+        stop_hooks = _recent_stop_hooks(sdir / "updates.jsonl")
+        if stop_hooks:
+            print("last Stop co-fire:")
+            for name, ms in stop_hooks:
+                print(f"  · {name} ({ms}ms)" if ms is not None else f"  · {name}")
         if card.get("extract_ms") is not None and float(card["extract_ms"]) > 2000:
             print("WARN: extract > 2000ms on this session", file=sys.stderr)
             return 3
     return 0 if sdir else 1
+
+
+def _recent_stop_hooks(updates_path: Path, max_bytes: int = 200_000) -> list[tuple[str, int | None]]:
+    if not updates_path.exists():
+        return []
+    try:
+        size = updates_path.stat().st_size
+        with updates_path.open("rb") as f:
+            if size > max_bytes:
+                f.seek(size - max_bytes)
+                f.readline()
+            raw = f.read().decode("utf-8", errors="replace")
+    except OSError:
+        return []
+    last_runs: list[tuple[str, int | None]] = []
+    for line in raw.splitlines():
+        if "hook_execution" not in line or "stop" not in line:
+            continue
+        try:
+            o = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        u = (o.get("params") or {}).get("update") or {}
+        if u.get("sessionUpdate") != "hook_execution":
+            continue
+        if str(u.get("event_name") or "").lower() not in ("stop", "stop_failure"):
+            continue
+        last_runs = []
+        for r in u.get("runs") or []:
+            st = r.get("status") or {}
+            last_runs.append((str(r.get("name") or "?"), st.get("elapsed_ms")))
+    return last_runs
 
 
 def cmd_notify_body(args: argparse.Namespace) -> int:

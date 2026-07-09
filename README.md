@@ -51,8 +51,12 @@ Cards land at:
 GROKPRINT_DISABLE=1     # no-op hook
 GROKPRINT_ANNOTATE=1    # print compact card as hook annotation
 GROKPRINT_DEBUG=1       # stderr on hook errors
+GROKPRINT_LOOP_EVERY=5  # while a harness loop is active, write every Nth Stop
 GROKPRINT_LIVE=1 pytest tests/test_harness_latency.py  # p95 on real sessions
 ```
+
+Scenario QA checklist: [`docs/SCENARIOS.md`](docs/SCENARIOS.md).  
+Harness role: **observer only** — never agent control (see `AGENTS.md`).
 
 Optional notification hook — add to `~/.grok/config.toml`:
 

@@ -29,10 +29,15 @@ def test_minimal_turn_extract(tmp_path: Path):
     assert card["redacted"] is True
     assert card["sources"]["events"] is True
     assert card["sources"]["chat_history"] is True
+    assert card["sources"]["updates"] is True
+    assert card.get("loop_active") is False
+    assert card.get("loop_modes") == []
 
     joined_h = " ".join(card["happened"]).lower()
     for sub in expected["must_contain_happened_substrings"]:
         assert sub.lower() in joined_h
+    # updates title should surface when distinct
+    assert "web search" in joined_h or "also:" in joined_h
 
     joined_a = " ".join(card["attention"]).lower()
     for sub in expected["must_contain_attention_substrings"]:

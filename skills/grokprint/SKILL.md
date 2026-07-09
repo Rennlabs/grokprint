@@ -49,3 +49,7 @@ grokprint show
 # or
 grokprint extract && grokprint show
 ```
+
+## Not for agents
+
+Do not treat the card as a control protocol, task queue, or verifier input. It is a human orientation surface. In harness loops (ralph/ultrawork/OMC), stay fail-open and parent-only — see `AGENTS.md`.

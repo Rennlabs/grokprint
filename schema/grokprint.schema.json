@@ -92,6 +92,22 @@
     },
     "session_dir": {
       "type": ["string", "null"]
+    },
+    "loop_active": {
+      "type": "boolean",
+      "description": "True when an OMC/harness loop mode is active in .omc/state (read-only label)"
+    },
+    "loop_modes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Active loop mode names (ralph, ultrawork, …); empty if none"
+    },
+    "throttled": {
+      "type": "boolean",
+      "description": "True when write skipped due to GROKPRINT_LOOP_EVERY"
+    },
+    "throttle_reason": {
+      "type": ["string", "null"]
     }
   }
 }
