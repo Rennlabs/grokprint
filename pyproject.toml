@@ -5,11 +5,26 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "grokprint"
 version = "0.1.0"
-description = "Practical turn-level print for Grok Build"
+description = "Unofficial turn-level orientation print for Grok Build (best-effort)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Renn Labs" }]
+keywords = ["grok", "xai", "cli", "dx", "hooks"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Environment :: Console",
+]
+
+[project.urls]
+Homepage = "https://github.com/Rennlabs/grokprint"
+Issues = "https://github.com/Rennlabs/grokprint/issues"
+Changelog = "https://github.com/Rennlabs/grokprint/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
 
 [project.scripts]
 grokprint = "grokprint.cli:main"

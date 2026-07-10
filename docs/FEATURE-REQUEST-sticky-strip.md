@@ -1,6 +1,6 @@
 # Feature request: sticky turn-print strip in Grok TUI
 
-**Status:** draft for upstream / product conversation  
+**Status:** community draft / wishlist (unofficial; not an xAI product request channel)  
 **Project:** [Rennlabs/grokprint](https://github.com/Rennlabs/grokprint)  
 **Date:** 2026-07-09
 

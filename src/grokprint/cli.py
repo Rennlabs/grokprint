@@ -92,6 +92,15 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         print(f"tools lines:  {len(card.get('happened') or [])}")
         print(f"need lines:   {len(card.get('need_from_you') or [])}")
         print(f"loop_active:  {card.get('loop_active')} {card.get('loop_modes') or []}")
+        compat = _events_compat_probe(sdir / "events.jsonl")
+        print(f"events probe: {compat['summary']}")
+        if compat.get("schema_versions"):
+            print(f"  schema_version samples: {compat['schema_versions']}")
+        if compat.get("types"):
+            top = ", ".join(f"{k}×{v}" for k, v in compat["types"][:8])
+            print(f"  event types (sample): {top}")
+        if not compat.get("ok"):
+            print("WARN: events.jsonl missing expected turn markers — Grok format may have changed", file=sys.stderr)
         # Recent Stop co-fire names from updates.jsonl (tail)
         stop_hooks = _recent_stop_hooks(sdir / "updates.jsonl")
         if stop_hooks:
@@ -101,7 +110,59 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         if card.get("extract_ms") is not None and float(card["extract_ms"]) > 2000:
             print("WARN: extract > 2000ms on this session", file=sys.stderr)
             return 3
+        if not compat.get("ok"):
+            return 4
     return 0 if sdir else 1
+
+
+def _events_compat_probe(events_path: Path, max_lines: int = 5000) -> dict:
+    """Sample events.jsonl for turn markers and schema_version (fail-loud on drift)."""
+    from collections import Counter
+
+    if not events_path.exists():
+        return {"ok": False, "summary": "events.jsonl missing", "types": [], "schema_versions": []}
+    types: Counter[str] = Counter()
+    schemas: Counter[str] = Counter()
+    has_start = has_end = has_tool = False
+    n = 0
+    try:
+        with events_path.open("r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                n += 1
+                if n > max_lines:
+                    break
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    o = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                t = str(o.get("type") or "?")
+                types[t] += 1
+                if t == "turn_started":
+                    has_start = True
+                    if o.get("schema_version") is not None:
+                        schemas[str(o.get("schema_version"))] += 1
+                elif t == "turn_ended":
+                    has_end = True
+                elif t in ("tool_started", "tool_completed"):
+                    has_tool = True
+    except OSError as exc:
+        return {"ok": False, "summary": f"read error: {exc}", "types": [], "schema_versions": []}
+
+    ok = has_start and (has_end or has_tool)
+    parts = []
+    parts.append("turn_started" if has_start else "NO turn_started")
+    parts.append("turn_ended" if has_end else "no turn_ended yet")
+    parts.append("tools" if has_tool else "no tools")
+    parts.append(f"scanned≤{n} lines")
+    return {
+        "ok": ok,
+        "summary": "; ".join(parts),
+        "types": types.most_common(12),
+        "schema_versions": [f"{k}×{v}" for k, v in schemas.most_common(5)],
+    }
 
 
 def _recent_stop_hooks(updates_path: Path, max_bytes: int = 200_000) -> list[tuple[str, int | None]]:

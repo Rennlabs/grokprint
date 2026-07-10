@@ -1,4 +1,5 @@
 .omc/
+.omx/
 .patchright/
 .grokprint/
 *.pyc
@@ -8,6 +9,8 @@ __pycache__/
 .DS_Store
 node_modules/
 dist/
+build/
 .venv/
 .pytest_cache/
 *.json.lock
+.grokprint-loop-count
