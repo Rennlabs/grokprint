@@ -1,4 +1,4 @@
-"""CLI entrypoint: grokprint show | extract | doctor | notify-body."""
+"""CLI entrypoint: grokprint show | extract | doctor | version | notify-body."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ _SRC = Path(__file__).resolve().parents[1]
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
+from grokprint import __version__  # noqa: E402
 from grokprint.extract import extract_and_write, extract_card, write_card  # noqa: E402
 from grokprint.render import render_compact, render_markdown, render_notification  # noqa: E402
 from grokprint.session import find_session_dir, project_last_print_path  # noqa: E402
@@ -72,13 +73,31 @@ def cmd_extract(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_version(_: argparse.Namespace) -> int:
+    print(f"grokprint {__version__}")
+    return 0
+
+
 def cmd_doctor(args: argparse.Namespace) -> int:
     sid = args.session or os.environ.get("GROK_SESSION_ID")
     cwd = args.cwd or os.environ.get("GROK_WORKSPACE_ROOT") or os.getcwd()
     sdir = find_session_dir(session_id=sid, cwd=cwd)
+    print(f"version:      {__version__}")
     print(f"cwd:          {cwd}")
     print(f"GROK_SESSION: {sid or '(unset)'}")
     print(f"session_dir:  {sdir or '(not found)'}")
+
+    # Hook install honesty
+    grok_home = Path(os.environ.get("GROK_HOME") or Path.home() / ".grok")
+    hook_json = grok_home / "hooks" / "grokprint-stop.json"
+    if hook_json.is_file():
+        print(f"hook file:    OK ({hook_json})")
+        print("reload:       after install, run in Grok: Ctrl+L → Hooks → r  (hooks load at session start)")
+    else:
+        print(f"hook file:    MISSING ({hook_json}) — run ./install.sh")
+    if os.environ.get("GROKPRINT_DISABLE", "").strip() in ("1", "true", "yes"):
+        print("disabled:     GROKPRINT_DISABLE=1 (hook is a no-op)")
+
     if sdir:
         for name in ("events.jsonl", "updates.jsonl", "chat_history.jsonl", "summary.json", "grokprint.json", "last-print.md"):
             p = sdir / name
@@ -211,10 +230,11 @@ def main(argv: list[str] | None = None) -> int:
         prog="grokprint",
         description="Practical turn-level print for Grok Build",
     )
+    parser.add_argument("--version", "-V", action="store_true", help="Print version and exit")
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--session", default=None, help="Session id (default: GROK_SESSION_ID)")
     common.add_argument("--cwd", default=None, help="Workspace root (default: GROK_WORKSPACE_ROOT or pwd)")
-    sub = parser.add_subparsers(dest="cmd", required=True)
+    sub = parser.add_subparsers(dest="cmd", required=False)
 
     p_show = sub.add_parser("show", help="Show last card", parents=[common])
     p_show.add_argument("--json", action="store_true")
@@ -235,7 +255,15 @@ def main(argv: list[str] | None = None) -> int:
     p_n = sub.add_parser("notify-body", help="Print notification body (NEED first)", parents=[common])
     p_n.set_defaults(func=cmd_notify_body)
 
+    p_ver = sub.add_parser("version", help="Print version")
+    p_ver.set_defaults(func=cmd_version)
+
     args = parser.parse_args(argv)
+    if getattr(args, "version", False) or args.cmd is None:
+        if args.cmd is None and not getattr(args, "version", False):
+            parser.print_help()
+            return 2
+        return cmd_version(args)
     return int(args.func(args))
 
 

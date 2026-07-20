@@ -470,6 +470,33 @@ def extract_card(
     workspace = cwd or summary.get("info", {}).get("cwd") or os.environ.get("GROK_WORKSPACE_ROOT")
     loop_modes = detect_loop_modes(cwd=workspace, session_id=sid)
 
+    # Live context signals for ATTENTION (git dirty, verifier RED) — fail-open
+    try:
+        import subprocess
+        from pathlib import Path as _P
+
+        ws = _P(str(workspace)) if workspace else None
+        if ws and ws.is_dir():
+            porc = subprocess.check_output(
+                ["git", "-C", str(ws), "status", "--porcelain"],
+                stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=2,
+            )
+            dirty_n = len([ln for ln in porc.splitlines() if ln.strip()])
+            if dirty_n:
+                attention.append(f"git dirty: {dirty_n} path(s)")
+            state = ws / ".omc" / "state"
+            if state.is_dir():
+                vers = sorted(state.glob("*-verifier.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+                if vers:
+                    vo = json.loads(vers[0].read_text(encoding="utf-8"))
+                    res = str(vo.get("result") or vo.get("status") or vo.get("verdict") or "").upper()
+                    if res in ("RED", "FAIL", "FAILED"):
+                        attention.insert(0, f"verifier RED: {vers[0].stem}")
+    except Exception:
+        pass
+
     # Cap lists to schema limits
     happened = happened[:12]
     attention = attention[:8]

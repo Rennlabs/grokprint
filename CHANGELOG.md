@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.1] - 2026-07-20
+
+### Added
+
+- `grokprint version` / `--version`
+- Doctor reports hook file + **reload** honesty (Ctrl+L → Hooks → r)
+- ATTENTION context signals: git dirty path count, latest verifier RED
+- Width-aware compact cards (`COLUMNS`); version footer on markdown cards
+
 ## [0.1.0] — 2026-07-09
 
 ### Added

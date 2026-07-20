@@ -11,7 +11,26 @@ def _bullets(items: list[str], empty: str = "none") -> str:
     return "\n".join(f"- {x}" for x in items)
 
 
+def _width() -> int:
+    try:
+        import os
+
+        return max(40, min(120, int(os.environ.get("COLUMNS") or "80")))
+    except (TypeError, ValueError):
+        return 80
+
+
+def _clip(s: str, width: int | None = None) -> str:
+    w = width if width is not None else _width()
+    s = "".join(ch for ch in s if ch >= " " or ch in "\t")
+    if len(s) <= w:
+        return s
+    return s[: w - 1] + "…"
+
+
 def render_markdown(card: Mapping[str, Any]) -> str:
+    from grokprint import __version__
+
     status = card.get("status") or "?"
     turn = card.get("turn_number")
     turn_s = f"turn {turn}" if turn is not None else "turn ?"
@@ -42,32 +61,35 @@ def render_markdown(card: Mapping[str, Any]) -> str:
     nxt = card.get("next")
     if nxt:
         lines.extend(["", f"**NEXT:** {nxt}"])
-    lines.append("")
+    lines.extend(["", f"_grokprint {__version__}_", ""])
     return "\n".join(lines)
 
 
 def render_compact(card: Mapping[str, Any], max_lines: int = 12) -> str:
-    """≤12 line terminal-friendly card."""
+    """≤12 line terminal-friendly card (width-aware)."""
+    from grokprint import __version__
+
+    w = _width()
     lines: list[str] = []
     status = card.get("status") or "?"
     loop = ""
     if card.get("loop_modes"):
         loop = " loop:" + ",".join(card["loop_modes"][:3])
-    lines.append(f"GROKPRINT [{status}] t{card.get('turn_number', '?')}{loop}")
+    lines.append(_clip(f"GROKPRINT [{status}] t{card.get('turn_number', '?')}{loop} · v{__version__}", w))
 
     def section(title: str, items: list[str], empty: str = "none") -> None:
-        lines.append(f"{title}:")
+        lines.append(_clip(f"{title}:", w))
         if not items:
-            lines.append(f"  {empty}")
+            lines.append(_clip(f"  {empty}", w))
             return
         for it in items:
-            lines.append(f"  • {it}")
+            lines.append(_clip(f"  • {it}", w))
 
     section("HAPPENED", list(card.get("happened") or []))
     section("ATTENTION", list(card.get("attention") or []))
     section("NEED FROM YOU", list(card.get("need_from_you") or []))
     if card.get("next"):
-        lines.append(f"NEXT: {card['next']}")
+        lines.append(_clip(f"NEXT: {card['next']}", w))
 
     if len(lines) > max_lines:
         lines = lines[: max_lines - 1] + ["  …"]
