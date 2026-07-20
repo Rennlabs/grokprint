@@ -13,13 +13,19 @@ _PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----"), "[REDACTED_PRIVATE_KEY]"),
     (re.compile(r"\b(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}\b"), "[REDACTED_GITHUB_TOKEN]"),
     (re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"), "[REDACTED_GITHUB_PAT]"),
+    (re.compile(r"\bnpm_[A-Za-z0-9]{20,}\b"), "[REDACTED_NPM_TOKEN]"),
+    (re.compile(r"(?i)//[^\s:]+:_authToken=[^\s]+"), "//[REDACTED_NPM_AUTH]"),
+    (re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b"), "[REDACTED_SLACK_TOKEN]"),
     (re.compile(r"\bsk-[A-Za-z0-9]{20,}\b"), "[REDACTED_API_KEY]"),
     (re.compile(r"\bxai-[A-Za-z0-9]{20,}\b"), "[REDACTED_API_KEY]"),
     (re.compile(r"\bAIza[0-9A-Za-z\-_]{20,}\b"), "[REDACTED_API_KEY]"),
     (re.compile(r"\b(AKIA|ASIA)[0-9A-Z]{16}\b"), "[REDACTED_AWS_KEY]"),
+    # DB / URI credentials: scheme://user:pass@host
+    (re.compile(r"(?i)\b((?:postgres|postgresql|mysql|mongodb|redis|amqp|https?)://)[^/\s:@]+:[^/\s@]+@"), r"\1[REDACTED_USER]:[REDACTED_PASS]@"),
     (re.compile(r"(?i)\bBearer\s+[A-Za-z0-9\-._~+/]+=*\b"), "Bearer [REDACTED]"),
     (re.compile(r"(?i)\b(authorization|api[_-]?key|token|secret|password|passwd|pwd)\s*[:=]\s*\S+"), r"\1=[REDACTED]"),
-    (re.compile(r"(?i)\b(export\s+)?([A-Z][A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PASSWD|API_KEY|ACCESS_KEY)[A-Z0-9_]*)\s*=\s*\S+"), r"\1\2=[REDACTED]"),
+    (re.compile(r"(?i)\b(export\s+)?([A-Z][A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PASSWD|API_KEY|ACCESS_KEY|AUTH_TOKEN)[A-Z0-9_]*)\s*=\s*\S+"), r"\1\2=[REDACTED]"),
+    (re.compile(r"(?i)\b(password|passwd|pwd|secret)\s+is\s+\S+"), r"\1 is [REDACTED]"),
     # Long opaque tokens (base64-ish)
     (re.compile(r"\b[A-Za-z0-9+/]{48,}={0,2}\b"), "[REDACTED_BLOB]"),
 ]

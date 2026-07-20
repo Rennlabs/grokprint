@@ -1,7 +1,7 @@
 # Preflight audit — grokprint
 
 **Date:** 2026-07-10  
-**Scope:** `/home/eglobal/repos/grokprint` (CLI + Stop hook + session extract; no web UI)  
+**Scope:** `grokprint` repo root (CLI + Stop hook + session extract; no web UI)  
 **Method:** End-to-end flow review (install → Stop → extract → write → show/notify); adversarial redaction probes; concurrency/race review  
 **Code modified during audit:** None  
 **Tests at audit:** 24 passed, 1 skipped  

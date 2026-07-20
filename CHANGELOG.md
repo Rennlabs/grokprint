@@ -2,6 +2,13 @@
 
 ## [0.1.1] - 2026-07-20
 
+### Security / privacy
+
+- Broader redaction (npm, Slack, DB URLs, free-text password)
+- Project-tree digest copy off by default (`GROKPRINT_PROJECT_COPY=1` to enable)
+- Install `--dry-run` / `--force`; safe quoted hook command
+- Fixture tokens built from pieces (leak-scan clean)
+
 ### Added
 
 - `grokprint version` / `--version`

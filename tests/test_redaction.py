@@ -1,16 +1,21 @@
 from grokprint.redaction import looks_like_secret, redact_card, redact_text
 
+# Build fake token shapes from pieces so the source file is leak-scan clean.
+_FAKE_GHP = "ghp_" + ("a" * 36)
+_FAKE_SK = "sk-" + ("b" * 32)
+
 
 def test_redacts_github_token():
-    s = "token ghp_abcdefghijklmnopqrstuvwxyz012345"
+    s = f"token {_FAKE_GHP}"
     out = redact_text(s)
     assert "ghp_" not in out
     assert "REDACTED" in out
 
 
 def test_redacts_sk_key():
-    s = "use sk-abcdefghijklmnopqrstuvwxyz012345 now"
-    assert "sk-abc" not in redact_text(s)
+    s = f"use {_FAKE_SK} now"
+    assert "sk-b" not in redact_text(s)
+    assert "REDACTED" in redact_text(s)
 
 
 def test_redacts_env_assignment():
@@ -23,7 +28,7 @@ def test_redacts_env_assignment():
 def test_redact_card_flags():
     card = {
         "happened": ["ok"],
-        "attention": ["token ghp_abcdefghijklmnopqrstuvwxyz012345"],
+        "attention": [f"token {_FAKE_GHP}"],
         "need_from_you": ["Should I rotate?"],
         "next": None,
         "redacted": False,
@@ -34,5 +39,13 @@ def test_redact_card_flags():
 
 
 def test_looks_like_secret():
-    assert looks_like_secret("ghp_abcdefghijklmnopqrstuvwxyz012345")
+    assert looks_like_secret(_FAKE_GHP)
     assert not looks_like_secret("plain status line")
+
+
+def test_redacts_slack_and_db_url():
+    slack = "xoxb-" + ("9" * 24)
+    assert "xoxb-" not in redact_text(f"token {slack}")
+    out = redact_text("postgres://alice:s3cret@db.example/app")
+    assert "s3cret" not in out
+    assert "REDACTED" in out

@@ -16,6 +16,16 @@ def _load_fixture(name: str, tmp_path: Path) -> Path:
     src = FIXTURES / name
     dest = tmp_path / name
     shutil.copytree(src, dest)
+    # Inject synthetic token shapes at runtime (never store complete
+    # ghp_/sk- literals in the repo — keeps leak-scan clean).
+    if name == "secrets_turn":
+        chat = dest / "chat_history.jsonl"
+        if chat.is_file():
+            fake_ghp = "ghp_" + ("a" * 36)
+            fake_sk = "sk-" + ("b" * 32)
+            text = chat.read_text(encoding="utf-8")
+            text = text.replace("__FAKE_GHP__", fake_ghp).replace("__FAKE_SK__", fake_sk)
+            chat.write_text(text, encoding="utf-8")
     return dest
 
 

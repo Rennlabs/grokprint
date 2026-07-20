@@ -1,1 +1,1 @@
-{"type": "assistant", "content": "Exported token ghp_abcdefghijklmnopqrstuvwxyz0123456789 for deploy.\nAPI_KEY=sk-abcdefghijklmnopqrstuvwxyz012345\nShould I rotate the key?"}
+{"type": "assistant", "content": "Exported token __FAKE_GHP__ for deploy.\nAPI_KEY=__FAKE_SK__\nShould I rotate the key?"}

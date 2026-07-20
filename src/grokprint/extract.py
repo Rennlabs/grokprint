@@ -530,15 +530,28 @@ def extract_card(
     return redact_card(card)
 
 
+def _also_project_default() -> bool:
+    """Project-tree copy is opt-in (privacy: avoid committing digests with paths)."""
+    v = (os.environ.get("GROKPRINT_PROJECT_COPY") or "").strip().lower()
+    return v in ("1", "true", "yes", "on")
+
+
 def write_card(
     card: dict[str, Any],
     session_dir: Path | None = None,
     *,
-    also_project: bool = True,
+    also_project: bool | None = None,
     cwd: str | Path | None = None,
 ) -> tuple[Path, Path]:
-    """Write grokprint.json + last-print.md. Returns (json_path, md_path)."""
+    """Write grokprint.json + last-print.md. Returns (json_path, md_path).
+
+    Project-tree copy (``<cwd>/.grokprint/``) is **off by default**. Set
+    ``GROKPRINT_PROJECT_COPY=1`` or pass ``also_project=True`` to enable.
+    """
     from .render import render_markdown
+
+    if also_project is None:
+        also_project = _also_project_default()
 
     sdir = session_dir
     if sdir is None and card.get("session_dir"):
@@ -558,6 +571,11 @@ def write_card(
         md_path = sdir / "last-print.md"
 
     payload = redact_card(card)
+    # Avoid leaking absolute home paths into durable digests
+    sd = str(payload.get("session_dir") or "")
+    home = str(Path.home())
+    if sd.startswith(home + os.sep):
+        payload["session_dir"] = "~" + sd[len(home) :]
     json_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     md_path.write_text(render_markdown(payload), encoding="utf-8")
 
@@ -565,6 +583,10 @@ def write_card(
         proj = project_last_print_path(cwd)
         try:
             proj.parent.mkdir(parents=True, exist_ok=True)
+            # Keep a sample .gitignore so digests are not casually committed
+            gi = proj.parent / ".gitignore"
+            if not gi.exists():
+                gi.write_text("*\n!.gitignore\n", encoding="utf-8")
             proj.write_text(render_markdown(payload), encoding="utf-8")
             (proj.parent / "grokprint.json").write_text(
                 json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
